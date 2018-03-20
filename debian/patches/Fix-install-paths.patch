@@ -1,0 +1,32 @@
+Description: Set install prefix correctly
+
+--- bifrost-0.8.0.orig/config.mk
++++ bifrost-0.8.0/config.mk
+@@ -18,11 +18,11 @@ else
+ endif
+ 
+ ifndef INSTALL_LIB_DIR
+-	INSTALL_LIB_DIR = /usr/local/lib
++	INSTALL_LIB_DIR = $(DESTDIR)/usr/lib
+ endif
+ 
+ ifndef INSTALL_INC_DIR
+-	INSTALL_INC_DIR = /usr/local/include
++	INSTALL_INC_DIR = $(DESTDIR)/usr/include
+ endif
+ 
+ BIFROST_NAME          = bifrost
+--- bifrost-0.8.0.orig/user.mk
++++ bifrost-0.8.0/user.mk
+@@ -13,9 +13,9 @@ PYINSTALLFLAGS ?=
+ #GPU_ARCHS     ?= 35 52
+ GPU_ARCHS     ?= 35 61
+ 
+-CUDA_HOME     ?= /usr/local/cuda
++CUDA_HOME     ?= /usr
+ CUDA_LIBDIR   ?= $(CUDA_HOME)/lib
+-CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib64
++CUDA_LIBDIR64 ?= $(CUDA_HOME)/lib/x86_64-linux-gnu
+ CUDA_INCDIR   ?= $(CUDA_HOME)/include
+ 
+ ALIGNMENT ?= 4096 # Memory allocation alignment
