@@ -1,0 +1,13 @@
+Description: Somehow didn't manage do disable -Wdate-time, so we force it
+
+--- bifrost-0.8.0+git20180511.8e1c0e1.orig/user.mk
++++ bifrost-0.8.0+git20180511.8e1c0e1/user.mk
+@@ -1,7 +1,7 @@
+ CXX           ?= g++
+ NVCC          ?= nvcc
+ LINKER        ?= g++
+-CPPFLAGS      ?=
++CPPFLAGS      =
+ CXXFLAGS      ?= -O3 -Wall -pedantic
+ NVCCFLAGS     ?= -O3 -Xcompiler "-Wall" #-Xptxas -v
+ LDFLAGS       ?=

@@ -1,5 +1,7 @@
-bifrost (0.8.0-1) UNRELEASED; urgency=low
+bifrost (0.8.0+git20180511.8e1c0e1-1) UNRELEASED; urgency=medium
 
-  * Initial release.
+  [ KERN packaging ]
+  * update watch file
+  * New upstream version 0.8.0+git20180511.8e1c0e1
 
- -- KERN packaging <packaging@kernsuite.info>  Tue, 20 Mar 2018 14:09:29 +0000
+ -- KERN packaging <packaging@kernsuite.info>  Mon, 20 Aug 2018 12:32:23 +0200

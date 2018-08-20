@@ -1,0 +1,9 @@
+src/ArrayIndexer.cuh.jit
+src/Complex.hpp.jit
+src/IndexArray.cuh.jit
+src/ShapeIndexer.cuh.jit
+src/Vector.hpp.jit
+src/int_fastdiv.h.jit
+test/*.pyc
+python/*.egg-info/
+python/dist/

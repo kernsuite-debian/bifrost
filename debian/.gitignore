@@ -1,0 +1,6 @@
+.debhelper/
+*.debhelper
+*.substvars
+bifrost/
+files
+

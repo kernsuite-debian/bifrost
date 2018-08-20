@@ -1,5 +1,30 @@
 #!/usr/bin/make -f
 
+export PYBUILD_NAME=bifrost
+
+# this disables the '-Wdate-time' flag since nvcc chokes on it
+DEB_BUILD_MAINT_OPTIONS=reproducible=-timeless
+
+PYPREFIX=$(CURDIR)/debian/bifrost/usr
+
 %:
-	dh $@  
+	dh $@  --parallel --with python2 --buildsystem=pybuild
+
+override_dh_auto_build:
+	CPPFLAGS="$(shell dpkg-buildflags --get CPPFLAGS)" make -j
+
+override_dh_auto_install:
+	mkdir -p $(PYPREFIX)/lib/python2.7/site-packages/
+	cd python && PYTHONPATH=$(PYPREFIX)/lib/python2.7/site-packages/ python setup.py install --prefix=$(PYPREFIX)
+
+override_dh_auto_configure:
+
+
+# disable since it downloads stuff
+override_dh_auto_test:
+
+override_dh_auto_clean:
+	make clean
+	cd python && python setup.py clean
+	
 

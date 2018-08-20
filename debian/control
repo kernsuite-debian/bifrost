@@ -2,14 +2,25 @@ Source: bifrost
 Section: science
 Priority: extra
 Maintainer: KERN packaging <packaging@kernsuite.info>
-Build-Depends: debhelper (>=9), nvidia-cuda-dev
+Build-Depends:
+ debhelper (>=9),
+ dh-python,
+ nvidia-cuda-dev,
+ exuberant-ctags,
+ ctypesgen,
+ python-all,
+ python-numpy,
+ python-contextlib2,
+ python-pint,
+ python-graphviz,
+ python-matplotlib
 Standards-Version: 3.9.8
 Homepage: https://github.com/ledatelescope/bifrost
 
 Package: bifrost
 Architecture: any
 Multi-Arch: foreign
-Depends: ${misc:Depends}, ${shlibs:Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}, ${python:Depends}
 Description: stream processing framework for high-throughput applications
  Bifrost is a stream processing framework, created to ease the development of
  high-throughput processing CPU/GPU pipelines. It is specifically designed for
