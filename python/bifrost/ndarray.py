@@ -50,7 +50,11 @@ import sys
 # TODO: ndarray.flags['WRITEABLE'] does not get preserved
 #         through ndarray.__init__()
 
+# TODO: Single-element assignment appears to be broken
+
 def _address_as_buffer(address, nbyte, readonly=False):
+    if address is None:
+        raise ValueError("Cannot create buffer from NULL pointer")
     # Note: This doesn't work as a buffer when using pypy
     # return (ctypes.c_byte*nbyte).from_address(address)
     # Note: This works as a buffer in regular python and pypy
@@ -250,7 +254,9 @@ class ndarray(np.ndarray):
                                   obj.bf.native, obj.bf.conjugated)
         else:
             # Generate metadata from existing np.ndarray
-            space      = str(Space(raw_get_space(obj.ctypes.data)))
+            #*space      = str(Space(raw_get_space(obj.ctypes.data)))
+            # Note: Assumes that any existing np.ndarray is in system space
+            space      = 'system'
             #dtype      = str(DataType(obj.dtype))
             # **TODO: Decide on bf.dtype being DataType vs. string (and same for space)
             dtype      = DataType(obj.dtype)
