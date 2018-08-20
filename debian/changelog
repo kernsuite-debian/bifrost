@@ -1,4 +1,4 @@
-bifrost (0.8.0+git20180511.8e1c0e1-1) UNRELEASED; urgency=medium
+bifrost (0.8.0+git20180511.8e1c0e1-1) bionic; urgency=medium
 
   [ KERN packaging ]
   * update watch file
