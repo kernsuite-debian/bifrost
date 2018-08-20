@@ -17,7 +17,7 @@ libbifrost:
 
 test:
 	#$(MAKE) -C $(SRC_DIR) test
-	cd test && python -m unittest discover
+	cd test && ./download_test_data.sh ; python -m unittest discover
 .PHONY: test
 clean:
 	$(MAKE) -C $(BIFROST_PYTHON_DIR) clean || true
@@ -31,6 +31,7 @@ uninstall:
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ)
 	rm -f $(INSTALL_LIB_DIR)/$(LIBBIFROST_SO_MAJ_MIN)
 	rm -rf $(INSTALL_INC_DIR)/bifrost/
+	$(MAKE) -C $(BIFROST_PYTHON_DIR) uninstall
 .PHONY: uninstall
 
 doc: $(INC_DIR)/bifrost/*.h Doxyfile

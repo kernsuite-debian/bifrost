@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 # Copyright (c) 2016, The Bifrost Authors. All rights reserved.
 #
@@ -34,6 +35,7 @@ from ndarray import ndarray, _address_as_buffer
 from copy import copy, deepcopy
 
 import ctypes
+import string
 import numpy as np
 
 try:
@@ -41,6 +43,11 @@ try:
 except ImportError:
     print "WARNING: Install simplejson for better performance"
     import json
+
+def _slugify(name):
+    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
+    valid_chars = frozenset(valid_chars)
+    return ''.join([c for c in name if c in valid_chars])
 
 # TODO: Should probably move this elsewhere (e.g., utils)
 def split_shape(shape):
@@ -69,15 +76,22 @@ def ring_view(ring, header_transform):
 
 class Ring(BifrostObject):
     instance_count = 0
-    def __init__(self, space='system', name=None, owner=None):
+    def __init__(self, space='system', name=None, owner=None, core=None):
         # If this is non-None, then the object is wrapping a base Ring instance
         self.base = None
         self.space = space
         if name is None:
             name = 'ring_%i' % Ring.instance_count
             Ring.instance_count += 1
+        name = _slugify(name)
         BifrostObject.__init__(self, _bf.bfRingCreate, _bf.bfRingDestroy,
                                name, _string2space(self.space))
+        if core is not None:
+            try:
+                _check( _bf.bfRingSetAffinity(self.obj, 
+                                              core) )
+            except RuntimeError:
+                pass
         self.owner = owner
         self.header_transform = None
     def __del__(self):
@@ -95,6 +109,9 @@ class Ring(BifrostObject):
     @property
     def name(self):
         return _get(_bf.bfRingGetName, self.obj)
+    @property
+    def core(self):
+        return _get(_bf.bfRingGetAffinity, self.obj)
     def begin_writing(self):
         return RingWriter(self)
     def _begin_writing(self):
@@ -103,6 +120,8 @@ class Ring(BifrostObject):
         _check( _bf.bfRingEndWriting(self.obj) )
     def open_sequence(self, name, guarantee=True):
         return ReadSequence(self, name=name, guarantee=guarantee)
+    def open_sequence_at(self, time_tag, guarantee=True):
+        return ReadSequence(self, which='at', time_tag=time_tag, guarantee=guarantee)
     def open_latest_sequence(self, guarantee=True):
         return ReadSequence(self, which='latest', guarantee=guarantee)
     def open_earliest_sequence(self, guarantee=True):
@@ -123,9 +142,10 @@ class RingWriter(object):
         return self
     def __exit__(self, type, value, tb):
         self.ring.end_writing()
-    def begin_sequence(self, header, buf_nframe):
+    def begin_sequence(self, header, gulp_nframe, buf_nframe):
         return WriteSequence(ring=self.ring,
                              header=header,
+                             gulp_nframe=gulp_nframe,
                              buf_nframe=buf_nframe)
 
 class SequenceBase(object):
@@ -193,14 +213,13 @@ class SequenceBase(object):
         return self._header
 
 class WriteSequence(SequenceBase):
-    def __init__(self, ring, header, buf_nframe):
+    def __init__(self, ring, header, gulp_nframe, buf_nframe):
         SequenceBase.__init__(self, ring)
         self._header = header
         # This allows passing DataType instances instead of string types
         header['_tensor']['dtype'] = str(header['_tensor']['dtype'])
         header_str = json.dumps(header)
         header_size = len(header_str)
-        gulp_nframe = header['gulp_nframe']
         tensor = self.tensor
         # **TODO: Consider moving this into bfRingSequenceBegin
         self.ring.resize(gulp_nframe * tensor['frame_nbyte'],
@@ -225,11 +244,11 @@ class WriteSequence(SequenceBase):
     def end(self):
         offset_from_head = 0
         _check(_bf.bfRingSequenceEnd(self.obj, offset_from_head))
-    def reserve(self, nframe):
-        return WriteSpan(self.ring, self, nframe)
+    def reserve(self, nframe, nonblocking=False):
+        return WriteSpan(self.ring, self, nframe, nonblocking)
 
 class ReadSequence(SequenceBase):
-    def __init__(self, ring, which='specific', name="",
+    def __init__(self, ring, which='specific', name="", time_tag=None,
                  other_obj=None, guarantee=True,
                  header_transform=None):
         SequenceBase.__init__(self, ring)
@@ -239,6 +258,9 @@ class ReadSequence(SequenceBase):
         self.obj = _bf.BFrsequence()
         if which == 'specific':
             _check(_bf.bfRingSequenceOpen(self.obj, ring.obj, name, guarantee))
+        elif which == 'at':
+            assert(time_tag is not None)
+            _check(_bf.bfRingSequenceOpenAt(self.obj, ring.obj, time_tag, guarantee))
         elif which == 'latest':
             _check(_bf.bfRingSequenceOpenLatest(self.obj, ring.obj, guarantee))
         elif which == 'earliest':
@@ -336,6 +358,15 @@ class SpanBase(object):
         return self._sequence.tensor['frame_nbyte']
     @property
     def frame_offset(self):
+        
+        # ***TODO: I think _info.offset could potentially not be a multiple
+        #            of frame_nbyte, because it's set to _tail when data are
+        #            skipped (this should be tested with a pipeline that uses
+        #            varying gulp_nframe). If this is the case, then we should
+        #            round up to a multiple of frame_nbyte.
+        #            However, this should only be done for ReadSpans, as
+        #              WriteSpans should always be aligned with a frame.
+        
         # **TODO: Change back-end to use long instead of uint64_t
         byte_offset = int(self._info.offset)
         assert(byte_offset % self.frame_nbyte == 0)
@@ -385,7 +416,6 @@ class SpanBase(object):
         data_ptr = self._data_ptr
 
         space = self.ring.space
-
         # **TODO: Need to integrate support for endianness and conjugatedness
         #         Also need support in headers for units of the actual values,
         #           in addition to the axis scales.
@@ -402,11 +432,12 @@ class WriteSpan(SpanBase):
     def __init__(self,
                  ring,
                  sequence,
-                 nframe):
+                 nframe,
+                 nonblocking=False):
         SpanBase.__init__(self, ring, sequence, writeable=True)
         nbyte = nframe * self._sequence.tensor['frame_nbyte']
         self.obj = _bf.BFwspan()
-        _check(_bf.bfRingSpanReserve(self.obj, ring.obj, nbyte))
+        _check(_bf.bfRingSpanReserve(self.obj, ring.obj, nbyte, nonblocking))
         self._set_base_obj(self.obj)
         # Note: We default to 0 instead of nframe so that we don't accidentally
         #         commit bogus data if a block throws an exception.
@@ -414,6 +445,7 @@ class WriteSpan(SpanBase):
         # TODO: Why do exceptions here not show up properly?
         #raise ValueError("SHOW ME THE ERROR")
     def commit(self, nframe):
+        assert(nframe <= self.nframe)
         self.commit_nframe = nframe
     def __enter__(self):
         return self

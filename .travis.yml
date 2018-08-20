@@ -3,7 +3,7 @@ sudo: required
 language: python
 
 python:
-    - "2.7"
+    - 2.7
     # PyPy versions
     - pypy-5.4.1
 
@@ -22,7 +22,15 @@ addons:
             - python-dev
             - gfortran
 
-install:
+jobs:
+    include:
+        - stage: docker and deploy docs
+          python: 2.7
+          script:
+            - make docker-cpu
+            - bash ./.travis_deploy_docs.sh
+
+script:
     - sudo pip --no-cache-dir install \
         setuptools \
         numpy \
@@ -36,17 +44,15 @@ install:
         codecov
     - sudo make -j NOCUDA=1
     - sudo make install
-
-
-script:
     - export LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-    - cd test
-    - sudo -E bash ./travis.sh
+    - cd test && sudo -E bash ./travis.sh && cd ..
+
 env:
     global:
         - ENCRYPTION_LABEL: "886f75ecbd69"
         - COMMIT_AUTHOR_EMAIL: "travis@ledatelescope.github.io"
 
 after_success:
+    - cd test
     - coveralls
     - codecov
