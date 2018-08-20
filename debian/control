@@ -5,7 +5,7 @@ Maintainer: KERN packaging <packaging@kernsuite.info>
 Build-Depends:
  debhelper (>=9),
  dh-python,
- nvidia-cuda-dev,
+ nvidia-cuda-toolkit,
  exuberant-ctags,
  ctypesgen,
  python-all,
@@ -13,7 +13,8 @@ Build-Depends:
  python-contextlib2,
  python-pint,
  python-graphviz,
- python-matplotlib
+ python-matplotlib,
+ python-setuptools
 Standards-Version: 3.9.8
 Homepage: https://github.com/ledatelescope/bifrost
 
